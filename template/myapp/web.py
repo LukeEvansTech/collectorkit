@@ -65,4 +65,8 @@ def create_app(s: Settings, opened: DB | None = None, start_scheduler: bool = Fa
 
     if start_scheduler:
         scheduler.start(s.schedule, s.common.timezone, lambda: sweep.run(db, s), "sweep")
+        if db.one("SELECT 1 FROM runs LIMIT 1") is None:
+            # A fresh volume: take the baseline now, so the last-success gauge is set well
+            # before the stale alert's wait runs out, not at the first scheduled time.
+            threading.Thread(target=sweep.run, args=(db, s, "first"), daemon=True).start()
     return app
