@@ -34,7 +34,7 @@ collectorkit[web] @ git+https://github.com/LukeEvansTech/collectorkit@v0.1.0
 `[web]` adds FastAPI for `metrics.mount`. Rendered pages need the `obscura` binary on `PATH`, or
 its path in `OBSCURA`.
 
-## A sweep, end to end
+## A whole sweep
 
 ```python
 from collectorkit import collect, config, mail, metrics, runs, seen
