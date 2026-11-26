@@ -14,7 +14,7 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageOps
 
 log = logging.getLogger(__name__)
 UA = (
@@ -45,7 +45,8 @@ def as_jpeg(raw: bytes, max_side: int = 0, quality: int = 85) -> bytes | None:
     try:
         img = Image.open(io.BytesIO(raw))
         img.load()
-        rgb = img.convert("RGB")
+        # a phone photo is stored sideways with a tag saying so; turn the pixels before the tag goes
+        rgb = ImageOps.exif_transpose(img).convert("RGB")
         if max_side:
             rgb.thumbnail((max_side, max_side))
         out = io.BytesIO()

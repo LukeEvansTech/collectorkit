@@ -41,11 +41,11 @@ class Photos:
 
 def thumb(photo: Path | bytes, side: int = 240, quality: int = 80) -> bytes | None:
     """A small JPEG of a photo, or None when it cannot be read."""
-    from PIL import Image  # pylint: disable=import-outside-toplevel
+    from PIL import Image, ImageOps  # pylint: disable=import-outside-toplevel
 
     try:
         with Image.open(io.BytesIO(photo) if isinstance(photo, bytes) else photo) as im:
-            rgb = im.convert("RGB")
+            rgb = ImageOps.exif_transpose(im).convert("RGB")
             rgb.thumbnail((side, side))
             out = io.BytesIO()
             rgb.save(out, "JPEG", quality=quality)

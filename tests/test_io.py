@@ -301,6 +301,15 @@ def test_store_names_by_content_and_download_survives_a_dead_url(tmp_path, monke
     assert images.download("https://[broken/a.jpg", tmp_path) == ""
 
 
+def test_a_sideways_photo_is_turned_upright():
+    out = io.BytesIO()
+    exif = Image.Exif()
+    exif[0x0112] = 6  # orientation: rotate 90 degrees to display
+    Image.new("RGB", (80, 40), "red").save(out, "JPEG", exif=exif)
+    assert Image.open(io.BytesIO(images.as_jpeg(out.getvalue()))).size == (40, 80)
+    assert Image.open(io.BytesIO(mail.thumb(out.getvalue()))).size == (40, 80)
+
+
 def test_an_image_that_claims_to_be_enormous_is_not_an_image(monkeypatch):
     monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 1000)  # the 800x400 test photo is 320 times that
     assert images.as_jpeg(jpeg()) is None and mail.thumb(jpeg()) is None

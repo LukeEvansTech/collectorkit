@@ -18,7 +18,8 @@ def _with_link(url: str, link: str, link_title: str) -> str:
 
 def send(urls: str, title: str, body: str, link: str = "", link_title: str = "Open") -> str:
     """'sent', 'off' (no channels configured) or 'failed: <reason>'. The channel URLs hold credentials and
-    are never logged or returned here (Apprise itself logs request payloads at DEBUG)."""
+    are never logged or returned here. Keep the root logger at INFO or above: at DEBUG the
+    HTTP libraries underneath log request URLs, which for some services carry the token."""
     targets = [u.strip() for u in urls.split(",") if u.strip()]
     if not targets:
         return "off"
