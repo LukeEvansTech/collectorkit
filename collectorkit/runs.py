@@ -124,6 +124,6 @@ def last_success(db: DB, where: str = DELIVERED) -> float:
     of delivering, a fixed SQL condition on ``runs`` (never user input)."""
     row = db.one(
         f"SELECT finished FROM runs WHERE finished IS NOT NULL AND {where}"  # nosec B608
-        " ORDER BY id DESC LIMIT 1"
+        " ORDER BY finished DESC LIMIT 1"
     )
     return parse(row["finished"]).timestamp() if row else 0.0

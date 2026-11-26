@@ -25,6 +25,10 @@ def send(urls: str, title: str, body: str, link: str = "", link_title: str = "Op
     try:
         import apprise
 
+        # Apprise logs a rejected channel's URL, and request payloads, with the credentials in
+        # them. The result string below is the record of what happened.
+        logging.getLogger("apprise").setLevel(logging.CRITICAL)
+
         a = apprise.Apprise()
         for u in targets:
             if not a.add(_with_link(u, link, link_title)):

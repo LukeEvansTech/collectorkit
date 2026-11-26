@@ -24,6 +24,14 @@ UA = (
 MAX_SIDE = 640
 
 
+def _host(url: str) -> str:
+    """For a log line: the host only, because a photo URL can be signed."""
+    try:
+        return urllib.parse.urlsplit(url).hostname or "?"
+    except ValueError:
+        return "?"
+
+
 def fetch(url: str, referer: str = "", limit: int = 8_000_000) -> bytes:
     if not url.startswith(("https://", "http://")):
         raise ValueError("not an http(s) URL")
@@ -43,7 +51,7 @@ def as_jpeg(raw: bytes, max_side: int = 0, quality: int = 85) -> bytes | None:
         out = io.BytesIO()
         rgb.save(out, "JPEG", quality=quality)
         return out.getvalue()
-    except (OSError, ValueError):
+    except (OSError, ValueError, Image.DecompressionBombError):
         return None
 
 
@@ -70,6 +78,5 @@ def download(url: str, img_dir: Path, referer: str = "") -> str:
     try:
         return store(fetch(url, referer), img_dir)
     except Exception as e:  # pylint: disable=broad-exception-caught
-        # the host only: a photo URL can be signed
-        log.warning("image from %s: %s", urllib.parse.urlsplit(url).hostname, type(e).__name__)
+        log.warning("image from %s: %s", _host(url), type(e).__name__)
         return ""

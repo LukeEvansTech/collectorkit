@@ -50,7 +50,7 @@ def thumb(photo: Path | bytes, side: int = 240, quality: int = 80) -> bytes | No
             out = io.BytesIO()
             rgb.save(out, "JPEG", quality=quality)
             return out.getvalue()
-    except (OSError, ValueError):
+    except (OSError, ValueError, Image.DecompressionBombError):
         return None
 
 

@@ -50,6 +50,14 @@ def test_notify_reports_a_rejected_channel_without_echoing_it():
     assert res.startswith("failed") and "secret-token" not in res
 
 
+def test_a_rejected_channel_does_not_log_its_credentials(caplog):
+    with caplog.at_level("DEBUG"):
+        assert notify.send("pover://%20bad-user-key@%20bad-app-token", "t", "b").startswith(
+            "failed"
+        )
+    assert "bad-app-token" not in caplog.text and "bad-user-key" not in caplog.text
+
+
 def test_pushover_gets_the_link_as_a_button():
     url = notify._with_link("pover://u@t", "https://x.test/a?b=1", "Open")
     assert url.startswith("pover://u@t?") and "url_title=Open" in url

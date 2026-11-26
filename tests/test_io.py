@@ -89,6 +89,15 @@ def test_page_items_filters_rewrites_and_dedupes():
     ]
 
 
+def test_page_items_can_key_on_the_query_string():
+    rows = [
+        ["https://s.test/item?itemCode=1", "One", "https://s.test/1.jpg", ""],
+        ["https://s.test/item?itemCode=2", "Two", "https://s.test/2.jpg", ""],
+    ]
+    assert len(collect.page_items(rows)) == 1
+    assert [i.name for i in collect.page_items(rows, keep_query=True)] == ["One", "Two"]
+
+
 def test_http_get_refuses_other_schemes():
     with pytest.raises(ValueError):
         collect.http_get("file:///etc/passwd")
@@ -289,3 +298,9 @@ def test_store_names_by_content_and_download_survives_a_dead_url(tmp_path, monke
     assert images.download("https://s.test/a.jpg?sig=secret-token", tmp_path) == ""
     assert "s.test" in caplog.text and "secret-token" not in caplog.text
     assert images.download("", tmp_path) == ""
+    assert images.download("https://[broken/a.jpg", tmp_path) == ""
+
+
+def test_an_image_that_claims_to_be_enormous_is_not_an_image(monkeypatch):
+    monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 1000)  # the 800x400 test photo is 320 times that
+    assert images.as_jpeg(jpeg()) is None and mail.thumb(jpeg()) is None

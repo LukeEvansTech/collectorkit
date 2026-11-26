@@ -152,8 +152,11 @@ def page_items(
     href_match: str = "",
     img_match: str = "",
     img_sub: tuple[str, str] | None = None,
+    keep_query: bool = False,
 ) -> list[Item]:
-    """Product cards from ``[href, name, image, price]`` rows, one per product link."""
+    """Product cards from ``[href, name, image, price]`` rows, one per product link. The key
+    is the link without its query string; pass ``keep_query`` for a shop whose products differ
+    only there (``/item?itemCode=1``)."""
     out, seen = [], set()
     for href, name, img, price in rows:
         if href_match and not re.search(href_match, href):
@@ -162,7 +165,7 @@ def page_items(
             continue
         if img_sub:  # e.g. a thumbnail path rewritten to the full-size one
             img = re.sub(img_sub[0], img_sub[1], img)
-        key = href.split("?")[0].rstrip("/")
+        key = href if keep_query else href.split("?")[0].rstrip("/")
         if key in seen:
             continue
         seen.add(key)
@@ -176,6 +179,7 @@ def page(
     img_match: str = "",
     img_sub: tuple[str, str] | None = None,
     js: str = CARDS_JS,
+    keep_query: bool = False,
 ) -> list[Item]:
     """Products on a listing page rendered by obscura (``OBSCURA`` names the binary)."""
     binary = os.environ.get("OBSCURA", "obscura")
@@ -187,7 +191,7 @@ def page(
         check=False,
     )
     rows = json.loads(json.loads(r.stdout)["results"][0]["eval"])
-    return page_items(rows, href_match, img_match, img_sub)
+    return page_items(rows, href_match, img_match, img_sub, keep_query)
 
 
 def _reason(e: Exception) -> str:
