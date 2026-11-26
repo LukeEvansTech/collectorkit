@@ -135,6 +135,8 @@ def test_last_success_takes_the_apps_own_definition(db):
     runs.finish(db, run_id, alerts="failed: SMTPException")
     assert runs.last_success(db) > 0
     assert runs.last_success(db, runs.DELIVERED + " AND alerts NOT LIKE 'failed%'") == 0.0
+    runs.start(db)  # still running: an OR in the app's condition must not reach it
+    assert runs.last_success(db, "alerts = 'sent' OR listings = 0") == 0.0
 
 
 def test_a_run_cut_off_by_a_restart_is_marked(db):

@@ -123,7 +123,7 @@ def last_success(db: DB, where: str = DELIVERED) -> float:
     """Unix time the last delivering run finished, or 0. ``where`` is the app's own definition
     of delivering, a fixed SQL condition on ``runs`` (never user input)."""
     row = db.one(
-        f"SELECT finished FROM runs WHERE finished IS NOT NULL AND {where}"  # nosec B608
+        f"SELECT finished FROM runs WHERE finished IS NOT NULL AND ({where})"  # nosec B608
         " ORDER BY finished DESC LIMIT 1"
     )
     return parse(row["finished"]).timestamp() if row else 0.0

@@ -181,7 +181,10 @@ def page(
     js: str = CARDS_JS,
     keep_query: bool = False,
 ) -> list[Item]:
-    """Products on a listing page rendered by obscura (``OBSCURA`` names the binary)."""
+    """Products on a listing page rendered by obscura (``OBSCURA`` names the binary).
+
+    Give ``href_match`` or ``img_match`` for every source: without one, the logo on a block
+    page counts as a product and the read looks like a success."""
     binary = os.environ.get("OBSCURA", "obscura")
     r = subprocess.run(  # nosec B603
         [binary, "scrape", url, "-e", js, "-q", "--timeout", "60"],

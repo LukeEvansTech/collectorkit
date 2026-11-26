@@ -67,8 +67,10 @@ if new:
         result = mail.send(
             s.smtp_host, s.smtp_port, s.mail_from, s.mail_to, subject(new), html, text
         )
-if result in ("sent", "nothing new"):  # mark seen only after the send succeeded
-    for got in read:
+for got in read:
+    # Mark seen only after the send succeeded. A source read for the first time is the
+    # exception: its baseline is recorded at once, whatever happened to the mail.
+    if result in ("sent", "nothing new") or not seen.baselined(db, got.name):
         seen.commit(db, got.name, [i.key for i in got.items])
 runs.finish(db, run_id, alerts=result)
 ```
