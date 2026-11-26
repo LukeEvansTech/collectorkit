@@ -121,6 +121,18 @@ def test_run_records_a_failure_and_an_empty_read_as_failures():
     assert empty.items is None and "0 items" in empty.error
 
 
+def test_run_drops_a_listing_whose_link_is_not_a_web_address():
+    items = [
+        collect.Item("1", "Good", "https://s.test/1", image="data:image/png;base64,AAAA"),
+        collect.Item("2", "Bad", "javascript:alert(1)"),
+        collect.Item("3", "Also bad", " JavaScript:alert(1)"),
+    ]
+    (got,) = collect.run([("Shop", lambda: items)])
+    assert [(i.key, i.image) for i in got.items] == [("1", "")]
+    (none,) = collect.run([("Shop", lambda: items[1:])])
+    assert none.items is None and "0 items" in none.error
+
+
 # --- llm ---
 class FakeResponse:
     def __init__(self, body, headers=None):

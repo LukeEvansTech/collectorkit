@@ -34,8 +34,9 @@ def main(argv: list[str] | None = None) -> int:
         uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", "8080")))  # nosec B104
         return 0
     run_id = sweep.run(db, s, trigger="cli", notify_on=not a.no_notify)
-    row = db.one("SELECT status FROM runs WHERE id = ?", run_id)
-    return 0 if row and row["status"] in ("success", "partial") else 1
+    row = db.one("SELECT status, alerts FROM runs WHERE id = ?", run_id)
+    read = bool(row) and row["status"] in ("success", "partial")
+    return 0 if read and not row["alerts"].startswith("failed") else 1
 
 
 if __name__ == "__main__":
