@@ -83,12 +83,12 @@ class LLM:
                 "messages": [{"role": "user", "content": content}],
             }
         ).encode()
-        req = urllib.request.Request(
-            f"{self.url}/chat/completions",
-            data=body,
-            headers={"Content-Type": "application/json", "Authorization": f"Bearer {self.key}"},
-        )
         try:
+            req = urllib.request.Request(
+                f"{self.url}/chat/completions",
+                data=body,
+                headers={"Content-Type": "application/json", "Authorization": f"Bearer {self.key}"},
+            )
             with _OPENER.open(req, timeout=self.timeout) as r:  # scheme checked above
                 cost = r.headers.get("x-litellm-response-cost", "")
                 out = json.loads(r.read())

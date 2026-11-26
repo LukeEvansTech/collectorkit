@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import io
 import logging
+import os
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -65,7 +66,7 @@ def store(raw: bytes, img_dir: Path, max_side: int = MAX_SIDE) -> str:
     name = hashlib.sha256(raw).hexdigest()[:24] + ".jpg"
     path = img_dir / name
     if not path.exists():
-        tmp = path.with_suffix(".tmp")
+        tmp = path.with_suffix(f".{os.getpid()}.{id(jpeg)}.tmp")  # two writers never share one
         tmp.write_bytes(jpeg)
         tmp.replace(path)
     return name

@@ -184,6 +184,7 @@ def test_an_answer_without_json_is_none_and_off_without_a_url(monkeypatch):
     monkeypatch.setattr(llm._OPENER, "open", lambda req, timeout: FakeResponse(answer("no")))
     assert llm.LLM("http://litellm.test/v1", "k", "claude").ask("x") is None
     assert llm.parse_json("[1, 2]") is None
+    assert llm.LLM("http://[broken/v1", "k", "claude").complete("x") is None
     off = llm.LLM("", "", "claude")
     assert off.on is False and off.complete("x") is None
 
