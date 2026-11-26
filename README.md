@@ -17,6 +17,7 @@ rules, and calls these modules for the parts that are the same everywhere.
 | `seen`      | Which listings of a source are new; a source's first read is a baseline                |
 | `collect`   | WooCommerce and Shopify product feeds, and rendered pages through `obscura`            |
 | `llm`       | A client for an OpenAI-compatible endpoint (LiteLLM) with photos, call and cost counts |
+| `llm_cache` | The same question about the same photos is asked once                                  |
 | `mail`      | An HTML email with inline photos over an SMTP relay                                    |
 | `notify`    | Alerts through Apprise, with a link button on Pushover                                 |
 | `metrics`   | `/health`, and `/metrics` with `<app>_last_success_timestamp_seconds`                  |
@@ -93,6 +94,11 @@ metrics.mount(app, "toys", s.version, lambda: runs.last_success(db))
    committed once.
 5. **No evasion of bot checks.** A blocked source is recorded as failed and shown in coverage.
 6. **Alert on the age of the last success**, not on errors or liveness.
+
+## Start a new app
+
+`template/` is a working skeleton with its tests, Dockerfile, agent guide and cluster manifests.
+Its `README.md` lists the steps.
 
 ## Develop
 

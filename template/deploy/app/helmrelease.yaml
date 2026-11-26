@@ -1,0 +1,144 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: myapp
+spec:
+  interval: 1h
+  chartRef:
+    kind: OCIRepository
+    name: myapp
+  values:
+    controllers:
+      myapp:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        # Recreate avoids a multi-attach deadlock on this RWO ceph-block PVC.
+        strategy: Recreate
+        containers:
+          app:
+            image:
+              repository: ghcr.io/lukeevanstech/myapp
+              tag: 0.1.0 # Renovate appends the digest
+            env:
+              TZ: ${TIMEZONE}
+              MYAPP_DATA: /data
+              MYAPP_PUBLIC_URL: https://myapp.${SECRET_DOMAIN}
+              # One sweep a day; the mail goes out when it found something new.
+              MYAPP_SCHEDULE: "0 7 * * *"
+              MYAPP_TZ: Europe/London
+              MYAPP_LLM_URL: http://litellm.ai.svc.cluster.local:4000/v1
+              MYAPP_LLM_MODEL: claude
+              # The mail goes through the cluster relay; the LAN name matches its certificate.
+              # The recipient comes from the secret (MYAPP_MAIL_TO).
+              MYAPP_SMTP_HOST: smtp.${SECRET_DOMAIN}
+              MYAPP_MAIL_FROM: noreply@${SECRET_DOMAIN}
+            envFrom:
+              - secretRef:
+                  name: myapp-secret
+            probes:
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /health
+                    port: &port 8080
+                  initialDelaySeconds: 10
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+                  failureThreshold: 3
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /health
+                    port: *port
+                  initialDelaySeconds: 5
+                  periodSeconds: 10
+                  timeoutSeconds: 10
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+            # Raise the limit to 2Gi for an app that runs a browser inside the pod.
+            resources:
+              requests:
+                cpu: 20m
+                memory: 128Mi
+              limits:
+                memory: 512Mi
+    defaultPodOptions:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+    service:
+      app:
+        # The route only proves the sign-in redirect (pocket-id component); this checks the app.
+        annotations:
+          gatus.home-operations.com/enabled: "true"
+          gatus.home-operations.com/endpoint: |-
+            name: myapp-service
+            group: internal
+            url: http://myapp.custom.svc.cluster.local:8080/health
+            conditions: ["[STATUS] == 200"]
+        controller: myapp
+        ports:
+          http:
+            port: *port
+    # /metrics carries the last delivering sweep; /health cannot see that.
+    serviceMonitor:
+      app:
+        serviceName: "{{ .Release.Name }}"
+        endpoints:
+          - port: http
+            scheme: http
+            path: /metrics
+            interval: 1m
+            scrapeTimeout: 10s
+    route:
+      app:
+        # A second route would otherwise rename this one myapp-app; the pocket-id component targets .
+        forceRename: "{{ .Release.Name }}"
+        hostnames:
+          - "myapp.${SECRET_DOMAIN}"
+        parentRefs:
+          - name: envoy-internal
+            namespace: network
+      # Outside the Pocket ID sign-in: the email loads photos from here, and a mail
+      # client has no session cookie.
+      public:
+        annotations:
+          gatus.home-operations.com/enabled: "false"
+        hostnames:
+          - "myapp.${SECRET_DOMAIN}"
+        parentRefs:
+          - name: envoy-internal
+            namespace: network
+        rules:
+          - matches:
+              - path:
+                  type: PathPrefix
+                  value: /img
+            backendRefs:
+              - identifier: app
+                port: *port
+    persistence:
+      data:
+        existingClaim: myapp
+        globalMounts:
+          - path: /data
+      tmp:
+        type: emptyDir
+        globalMounts:
+          - path: /tmp

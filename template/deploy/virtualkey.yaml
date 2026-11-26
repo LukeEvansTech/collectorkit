@@ -1,0 +1,39 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/litellm.home-operations.com/litellmvirtualkey_v1alpha1.json
+apiVersion: litellm.home-operations.com/v1alpha1
+kind: LiteLLMVirtualKey
+metadata:
+  name: myapp
+  namespace: ai
+spec:
+  # Cross-namespace key: PushSecret mirrors it to the litellm 1Password item
+  # (docs/docs/architecture/ai-llm-stack.md In-cluster consumers).
+  proxyRef: litellm
+  keyAlias: myapp
+  secretName: litellm-key-myapp
+  secretKey: api-key
+  # Say what the app asks and how often, and add a maxBudget.
+  models:
+    - claude
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/external-secrets.io/pushsecret_v1alpha1.json
+apiVersion: external-secrets.io/v1alpha1
+kind: PushSecret
+metadata:
+  name: myapp
+  namespace: ai
+spec:
+  refreshInterval: 1h
+  secretStoreRefs:
+    - name: onepassword-connect
+      kind: ClusterSecretStore
+  selector:
+    secret:
+      name: litellm-key-myapp
+  updatePolicy: Replace
+  data:
+    - match:
+        secretKey: api-key
+        remoteRef:
+          remoteKey: litellm
+          property: LITELLM_MYAPP_API_KEY
