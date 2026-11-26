@@ -2,8 +2,10 @@
 
 The worked example for the home cluster, kept as text here because the cluster repository is
 where these files are validated. Create each file below under
-`kubernetes/apps/custom/<app>/`, register the app in the namespace kustomization, add a row for
-the model key to the cluster's model-stack documentation, and replace every `myapp`.
+`kubernetes/apps/custom/<app>/`, register the app in the namespace kustomization, and replace
+every `myapp`. The model key is the last file: add it to `virtualkeys/kustomization.yaml` as
+well, or it is never applied and the app's secret cannot be built, and give it a row in the
+cluster's model-stack documentation.
 
 - The route sits behind the cluster's sign-in component; the `public` route opens `/img` only,
   so a mail client can load photos.

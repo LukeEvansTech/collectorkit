@@ -1,8 +1,10 @@
 """Ask a model once per question.
 
-The same prompt about the same photos gets the stored answer, so a re-run, a backfill or a
-second app instance does not pay twice. Only an answer is stored: a failed call, or one with no
-JSON in it, is asked again next time. Include ``SCHEMA`` in the app's schema.
+The same prompt about the same photos gets the stored answer, so a re-run or a backfill does
+not pay twice. Only an answer is stored: a failed call, or one with no JSON in it, is asked
+again next time. Two callers asking the same new question at the same moment both pay; a
+collector's sweeps never overlap, so that does not arise. Include ``SCHEMA`` in the app's
+schema.
 """
 
 from __future__ import annotations
