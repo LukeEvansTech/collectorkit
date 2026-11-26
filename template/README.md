@@ -23,10 +23,9 @@ sources, the schema and the pages with the app's own.
    `collectorkit.llm_cache.ask` so a re-run does not pay twice.
 7. **Tests.** `tests/test_app.py` holds the four behaviours every collector must keep: baseline,
    new listings mailed once, a failed send retried, a failed source not counted.
-8. **Cluster.** `deploy/` is the worked example for the home cluster: copy it to
-   `kubernetes/apps/custom/<app>/`, register it in the namespace kustomization, add the model
-   key and its documentation row, and replace every `myapp`. The alert thresholds in
-   `prometheusrule.yaml` follow the schedule: a daily sweep alerts after 36 hours.
+8. **Cluster.** `deploy/README.md` is the worked example for the home cluster: every manifest
+   the app needs, to create under `kubernetes/apps/custom/<app>/`. The alert thresholds follow
+   the schedule: a daily sweep alerts after 36 hours.
 
 ## Run it
 

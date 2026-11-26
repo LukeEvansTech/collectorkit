@@ -30,9 +30,9 @@ def env(tmp_path, monkeypatch):
 
         return [("Shop", read)]
 
-    def send(host, port, sender, to, subject, html, text, photos=None, from_name=""):
+    def send(*args):
         if state["mail"] == "sent":
-            state["sent"].append(subject)
+            state["sent"].append(args[4])  # the subject
         return state["mail"]
 
     monkeypatch.setattr(sweep.sources, "jobs", jobs)

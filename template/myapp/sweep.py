@@ -66,19 +66,17 @@ def deliver(db: DB, s: Settings, run_id: int, new: list[collect.Item]) -> str:
 
 def run(db: DB, s: Settings, trigger: str = "schedule", notify_on: bool = True) -> int:
     """Run one sweep; returns its run id, or 0 when another sweep is still going."""
-    if not LOCK.acquire(blocking=False):
+    if LOCK.locked():
         return 0
-    try:
+    with LOCK:
         return _run(db, s, trigger, notify_on)
-    finally:
-        LOCK.release()
 
 
 def _run(db: DB, s: Settings, trigger: str, notify_on: bool) -> int:
     run_id = runs.start(db, trigger)
     try:
         new: list[collect.Item] = []
-        read: list[collect.Outcome] = []
+        read: dict[str, list[str]] = {}  # the keys each source showed this sweep
         for got in collect.run(sources.jobs()):
             if got.items is None:  # a failed read is not an empty one
                 runs.source(db, run_id, got.name, error=got.error, seconds=got.seconds)
@@ -87,13 +85,13 @@ def _run(db: DB, s: Settings, trigger: str, notify_on: bool) -> int:
             store(db, got.items)
             fresh = set(seen.fresh(db, got.name, [i.key for i in got.items]))
             new += [i for i in got.items if i.key in fresh]
-            read.append(got)
+            read[got.name] = [i.key for i in got.items]
         result = "nothing new"
         if new:
             result = deliver(db, s, run_id, new) if notify_on else "off"
-        for got in read:
-            if result in ("sent", "nothing new") or not seen.baselined(db, got.name):
-                seen.commit(db, got.name, [i.key for i in got.items if i.key])
+        for name, keys in read.items():
+            if result in ("sent", "nothing new") or not seen.baselined(db, name):
+                seen.commit(db, name, keys)
         runs.finish(db, run_id, alerts=result)
     except Exception as e:  # pylint: disable=broad-exception-caught
         log.exception("sweep crashed")

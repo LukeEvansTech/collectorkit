@@ -60,7 +60,7 @@ def create_app(s: Settings, opened: DB | None = None, start_scheduler: bool = Fa
         "myapp",
         s.common.version,
         lambda: runs.last_success(db, delivered),
-        lambda: {"listings": db.one("SELECT COUNT(*) n FROM listings")["n"]},
+        lambda: {"listings": len(db.all("SELECT 1 FROM listings"))},
     )
 
     if start_scheduler:
