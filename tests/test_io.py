@@ -1,7 +1,7 @@
 """collect, llm, mail and images, with the network stubbed."""
 
 # Stubs keep the signatures of what they replace; the parsers return plain lists.
-# pylint: disable=unused-argument,unbalanced-tuple-unpacking
+# pylint: disable=unused-argument,unbalanced-tuple-unpacking,protected-access
 
 import email
 import io
@@ -147,7 +147,7 @@ def test_ask_sends_the_photo_and_counts_cost(monkeypatch):
         sent["body"] = json.loads(req.data)
         return FakeResponse(answer('Sure: {"ok": true}'), {"x-litellm-response-cost": "0.0125"})
 
-    monkeypatch.setattr(llm.urllib.request, "urlopen", fake)
+    monkeypatch.setattr(llm._OPENER, "open", fake)
     model = llm.LLM("http://litellm.test/v1/", "k", "claude")
     assert model.ask("Is it?", [jpeg()]) == {"ok": True}
     assert sent["url"] == "http://litellm.test/v1/chat/completions" and sent["auth"] == "Bearer k"
@@ -161,10 +161,18 @@ def test_a_failed_call_is_none_not_an_answer(monkeypatch, caplog):
     def fake(req, timeout):
         raise OSError("connection refused with key k-secret")
 
-    monkeypatch.setattr(llm.urllib.request, "urlopen", fake)
+    monkeypatch.setattr(llm._OPENER, "open", fake)
     model = llm.LLM("http://litellm.test/v1", "k-secret", "claude")
     assert model.complete("x") is None and model.ask("x") is None
     assert model.usage.calls == 0 and "k-secret" not in caplog.text
+
+
+def test_a_redirect_is_refused_and_an_answer_that_is_not_text_is_none(monkeypatch):
+    handler = llm._NoRedirect()
+    assert handler.redirect_request(None, None, 302, "Found", {}, "http://elsewhere.test/") is None
+    parts = [{"type": "text", "text": "{}"}]
+    monkeypatch.setattr(llm._OPENER, "open", lambda req, timeout: FakeResponse(answer(parts)))
+    assert llm.LLM("http://litellm.test/v1", "k", "claude").ask("x") is None
 
 
 def test_a_photo_gone_from_the_volume_is_none_not_a_crash(tmp_path):
@@ -173,9 +181,7 @@ def test_a_photo_gone_from_the_volume_is_none_not_a_crash(tmp_path):
 
 
 def test_an_answer_without_json_is_none_and_off_without_a_url(monkeypatch):
-    monkeypatch.setattr(
-        llm.urllib.request, "urlopen", lambda req, timeout: FakeResponse(answer("no"))
-    )
+    monkeypatch.setattr(llm._OPENER, "open", lambda req, timeout: FakeResponse(answer("no")))
     assert llm.LLM("http://litellm.test/v1", "k", "claude").ask("x") is None
     assert llm.parse_json("[1, 2]") is None
     off = llm.LLM("", "", "claude")

@@ -19,6 +19,17 @@ from pathlib import Path
 log = logging.getLogger(__name__)
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """The endpoint is configured, so a redirect is a fault. Following one would send the
+    bearer key to wherever it points."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+_OPENER = urllib.request.build_opener(_NoRedirect)
+
+
 @dataclass
 class Usage:
     calls: int = 0
@@ -78,7 +89,7 @@ class LLM:
             headers={"Content-Type": "application/json", "Authorization": f"Bearer {self.key}"},
         )
         try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as r:  # nosec B310
+            with _OPENER.open(req, timeout=self.timeout) as r:  # scheme checked above
                 cost = r.headers.get("x-litellm-response-cost", "")
                 out = json.loads(r.read())
         except Exception as e:  # pylint: disable=broad-exception-caught
@@ -90,9 +101,12 @@ class LLM:
         except ValueError:
             pass
         try:
-            return out["choices"][0]["message"]["content"] or ""
+            text = out["choices"][0]["message"]["content"]
         except (KeyError, IndexError, TypeError):
             return None
+        if text is None:
+            return ""
+        return text if isinstance(text, str) else None
 
     def ask(
         self, prompt: str, photos: list[Path | bytes] | None = None, max_tokens: int = 1500
