@@ -35,8 +35,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     run_id = sweep.run(db, s, trigger="cli", notify_on=not a.no_notify)
     row = db.one("SELECT status, alerts FROM runs WHERE id = ?", run_id)
-    read = bool(row) and row["status"] in ("success", "partial")
-    return 0 if read and not row["alerts"].startswith("failed") else 1
+    if row is None or row["status"] not in ("success", "partial"):
+        return 1
+    return 1 if row["alerts"].startswith("failed") else 0
 
 
 if __name__ == "__main__":
