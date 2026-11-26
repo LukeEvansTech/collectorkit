@@ -67,18 +67,22 @@ def send(
 ) -> str:
     """'sent' or 'failed: <reason>'. A recipient the relay refused is a failure, so the whole
     message is tried again next time."""
-    msg = EmailMessage()
-    msg["Subject"] = subject
-    msg["From"] = formataddr((from_name, sender)) if from_name else sender
-    msg["To"] = to
-    msg["Date"] = formatdate(localtime=True)
-    msg["Message-ID"] = make_msgid(domain=sender.rpartition("@")[2] or "collector")
-    msg.set_content(text)
-    msg.add_alternative(html, subtype="html")
-    body = msg.get_body(("html",))
-    for cid, data in (photos.parts if photos else {}).values():
-        if isinstance(body, EmailMessage):
-            body.add_related(data, "image", "jpeg", cid=f"<{cid}>", disposition="inline")
+    try:
+        msg = EmailMessage()
+        msg["Subject"] = subject
+        msg["From"] = formataddr((from_name, sender)) if from_name else sender
+        msg["To"] = to
+        msg["Date"] = formatdate(localtime=True)
+        msg["Message-ID"] = make_msgid(domain=sender.rpartition("@")[2] or "collector")
+        msg.set_content(text)
+        msg.add_alternative(html, subtype="html")
+        body = msg.get_body(("html",))
+        for cid, data in (photos.parts if photos else {}).values():
+            if isinstance(body, EmailMessage):
+                body.add_related(data, "image", "jpeg", cid=f"<{cid}>", disposition="inline")
+    except (ValueError, TypeError) as e:  # e.g. a line break in the subject
+        log.warning("email could not be built: %s", type(e).__name__)
+        return f"failed: {type(e).__name__}"
     try:
         with smtplib.SMTP(host, port, timeout=60) as smtp:
             smtp.ehlo()

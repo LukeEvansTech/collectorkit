@@ -27,5 +27,7 @@ Shared library for the collector apps (sleeper, sakuga and the apps built after 
 - **The first read is a baseline.** `seen.fresh` is empty until the source's first `commit`.
 - **Do not add evasion of bot checks** (stealth patches, captcha solving, challenge bypass). A
   blocked load is a recorded failure.
-- **Secrets never reach a log or a return value.** Log the exception type, not its text: URLs
-  and messages can carry keys.
+- **Secrets never reach a log or a return value.** For a failure this library expects (a send,
+  a fetch, a model call), log and return the exception type, not its text: URLs and messages
+  can carry keys. A scheduled job that crashes is the one exception: `scheduler` logs its
+  traceback, because that is the only record of why a sweep died.

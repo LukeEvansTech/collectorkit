@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import io
 import logging
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -69,5 +70,6 @@ def download(url: str, img_dir: Path, referer: str = "") -> str:
     try:
         return store(fetch(url, referer), img_dir)
     except Exception as e:  # pylint: disable=broad-exception-caught
-        log.warning("image %s: %s", url[:120], type(e).__name__)
+        # the host only: a photo URL can be signed
+        log.warning("image from %s: %s", urllib.parse.urlsplit(url).hostname, type(e).__name__)
         return ""

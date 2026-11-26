@@ -60,9 +60,13 @@ for got in collect.run(jobs):
     read.append(got)
 
 result = "nothing new"
-if new and s.mail_on:
-    html, text = render(new, runs.coverage(db, run_id))  # the app's own template
-    result = mail.send(s.smtp_host, s.smtp_port, s.mail_from, s.mail_to, subject(new), html, text)
+if new:
+    result = "off"  # mail not configured: the listings stay new until it is
+    if s.mail_on:
+        html, text = render(new, runs.coverage(db, run_id))  # the app's own template
+        result = mail.send(
+            s.smtp_host, s.smtp_port, s.mail_from, s.mail_to, subject(new), html, text
+        )
 if result in ("sent", "nothing new"):  # mark seen only after the send succeeded
     for got in read:
         seen.commit(db, got.name, [i.key for i in got.items])

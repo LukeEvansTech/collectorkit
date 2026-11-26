@@ -36,6 +36,12 @@ return [a?a.href:"",(i.alt||i.title||(a&&a.textContent)||"").trim().replace(/\\s
 i.currentSrc||i.src||i.dataset.src||"",price]}).filter(r=>r[0]&&r[1]&&r[2]))"""
 
 
+class CollectError(RuntimeError):
+    """A read that failed for a reason worth showing in coverage. Its text is written by this
+    module or the app, so it is safe to store; any other exception is recorded by type alone,
+    because its text can carry a URL or a key."""
+
+
 @dataclass
 class Item:
     """One listing as a shop shows it. ``key`` is unique within its source."""
@@ -184,6 +190,14 @@ def page(
     return page_items(rows, href_match, img_match, img_sub)
 
 
+def _reason(e: Exception) -> str:
+    if isinstance(e, CollectError):
+        return str(e)[:100]
+    if isinstance(e, subprocess.CalledProcessError):  # curl: 22 is an HTTP error, 28 a timeout
+        return f"{type(e).__name__}: exit {e.returncode}"
+    return type(e).__name__
+
+
 def run(jobs: Iterable[tuple[str, Callable[[], list[Item]]]]) -> list[Outcome]:
     """Run each ``(name, read)`` job. One dead shop does not cost the run."""
     out = []
@@ -192,12 +206,12 @@ def run(jobs: Iterable[tuple[str, Callable[[], list[Item]]]]) -> list[Outcome]:
         try:
             items = read()
             if not items:
-                raise RuntimeError("0 items (blocked, or the page layout changed)")
+                raise CollectError("0 items (blocked, or the page layout changed)")
             for i in items:
                 i.source = name
             out.append(Outcome(name, items, None, time.monotonic() - t0))
         except Exception as e:  # pylint: disable=broad-exception-caught
             log.warning("source %s failed: %s", name, type(e).__name__)
-            reason = f"{type(e).__name__}: {str(e)[:100]}"
+            reason = _reason(e)
             out.append(Outcome(name, None, reason, time.monotonic() - t0))
     return out

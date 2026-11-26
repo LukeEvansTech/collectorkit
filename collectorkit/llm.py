@@ -59,7 +59,12 @@ class LLM:
     ) -> str | None:
         if not self.url.startswith(("https://", "http://")):
             return None
-        content = [{"type": "text", "text": prompt}] + [image_part(p) for p in photos or []]
+        try:
+            parts = [image_part(p) for p in photos or []]
+        except OSError as e:  # a photo that has gone from the volume
+            log.warning("llm photo unreadable: %s", type(e).__name__)
+            return None
+        content = [{"type": "text", "text": prompt}] + parts
         body = json.dumps(
             {
                 "model": self.model,

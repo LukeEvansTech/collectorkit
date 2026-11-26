@@ -107,7 +107,7 @@ def test_run_records_a_failure_and_an_empty_read_as_failures():
     )
     good, dead, empty = got
     assert good.error is None and good.items[0].source == "Good"
-    assert dead.items is None and dead.error.startswith("TimeoutError")
+    assert dead.items is None and dead.error == "TimeoutError"  # the type, never the text
     assert empty.items is None and "0 items" in empty.error
 
 
@@ -156,6 +156,11 @@ def test_a_failed_call_is_none_not_an_answer(monkeypatch, caplog):
     model = llm.LLM("http://litellm.test/v1", "k-secret", "claude")
     assert model.complete("x") is None and model.ask("x") is None
     assert model.usage.calls == 0 and "k-secret" not in caplog.text
+
+
+def test_a_photo_gone_from_the_volume_is_none_not_a_crash(tmp_path):
+    model = llm.LLM("http://litellm.test/v1", "k", "claude")
+    assert model.ask("x", [tmp_path / "gone.jpg"]) is None and model.usage.calls == 0
 
 
 def test_an_answer_without_json_is_none_and_off_without_a_url(monkeypatch):
@@ -241,6 +246,13 @@ def test_a_refused_recipient_or_a_dead_relay_is_a_failure(smtp, monkeypatch):
     assert mail.send(*args) == "failed: SMTPConnectError"
 
 
+def test_a_subject_with_a_line_break_is_a_failure_not_a_crash(smtp):
+    res = mail.send(
+        "smtp.test", 25, "a@example.test", "b@example.test", "one\ntwo", "<p>h</p>", "t"
+    )
+    assert res.startswith("failed: ") and not smtp.sent
+
+
 def test_thumb_shrinks_and_survives_rubbish(tmp_path):
     small = Image.open(io.BytesIO(mail.thumb(jpeg(), side=100)))
     assert max(small.size) == 100
@@ -257,7 +269,7 @@ def test_as_jpeg_converts_a_png_served_under_any_name():
     assert images.as_jpeg(b"<html>blocked</html>") is None
 
 
-def test_store_names_by_content_and_download_survives_a_dead_url(tmp_path, monkeypatch):
+def test_store_names_by_content_and_download_survives_a_dead_url(tmp_path, monkeypatch, caplog):
     raw = jpeg()
     name = images.store(raw, tmp_path)
     assert name.endswith(".jpg") and images.store(raw, tmp_path) == name
@@ -274,5 +286,6 @@ def test_store_names_by_content_and_download_survives_a_dead_url(tmp_path, monke
         raise OSError("gone")
 
     monkeypatch.setattr(images, "fetch", dead)
-    assert images.download("https://s.test/a.jpg", tmp_path) == ""
+    assert images.download("https://s.test/a.jpg?sig=secret-token", tmp_path) == ""
+    assert "s.test" in caplog.text and "secret-token" not in caplog.text
     assert images.download("", tmp_path) == ""
