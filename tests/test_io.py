@@ -9,7 +9,8 @@ import json
 import smtplib
 
 import pytest
-from collectorkit import collect, images, llm, mail
+from collectorkit import collect, images, llm, llm_cache, mail
+from collectorkit.db import DB
 from PIL import Image
 
 
@@ -120,6 +121,18 @@ def test_run_records_a_failure_and_an_empty_read_as_failures():
     assert empty.items is None and "0 items" in empty.error
 
 
+def test_run_drops_a_listing_whose_link_is_not_a_web_address():
+    items = [
+        collect.Item("1", "Good", "https://s.test/1", image="data:image/png;base64,AAAA"),
+        collect.Item("2", "Bad", "javascript:alert(1)"),
+        collect.Item("3", "Also bad", " JavaScript:alert(1)"),
+    ]
+    (got,) = collect.run([("Shop", lambda: items)])
+    assert [(i.key, i.image) for i in got.items] == [("1", "")]
+    (none,) = collect.run([("Shop", lambda: items[1:])])
+    assert none.items is None and "0 items" in none.error
+
+
 # --- llm ---
 class FakeResponse:
     def __init__(self, body, headers=None):
@@ -187,6 +200,41 @@ def test_an_answer_without_json_is_none_and_off_without_a_url(monkeypatch):
     assert llm.LLM("http://[broken/v1", "k", "claude").complete("x") is None
     off = llm.LLM("", "", "claude")
     assert off.on is False and off.complete("x") is None
+
+
+# --- llm_cache ---
+def test_the_same_question_is_asked_once_and_a_failure_is_not_stored(tmp_path, monkeypatch):
+    db = DB(tmp_path / "c.db", llm_cache.SCHEMA)
+    replies = [OSError("down"), answer('{"ok": true}')]
+
+    def fake(req, timeout):
+        r = replies.pop(0)
+        if isinstance(r, Exception):
+            raise r
+        return FakeResponse(r)
+
+    monkeypatch.setattr(llm._OPENER, "open", fake)
+    model = llm.LLM("http://litellm.test/v1", "k", "claude")
+    photo = tmp_path / "p.jpg"
+    photo.write_bytes(jpeg())
+    assert llm_cache.ask(db, model, "Is it?", [photo]) is None  # the failure
+    assert llm_cache.ask(db, model, "Is it?", [photo]) == {"ok": True}  # asked again
+    assert llm_cache.ask(db, model, "Is it?", [photo]) == {"ok": True}  # from the cache
+    assert model.usage.calls == 1 and not replies
+    assert llm_cache.ask(db, model, "Is it?", [tmp_path / "gone.jpg"]) is None
+
+
+def test_the_key_changes_with_the_model_the_prompt_and_the_photo():
+    base = llm_cache.key("claude", "Is it?", [b"a"])
+    others = [
+        llm_cache.key("other", "Is it?", [b"a"]),
+        llm_cache.key("claude", "Is it not?", [b"a"]),
+        llm_cache.key("claude", "Is it?", [b"b"]),
+        llm_cache.key("claude", "Is it?", [b"a", b"a"]),
+        llm_cache.key("claudeIs", " it?", [b"a"]),
+    ]
+    assert base == llm_cache.key("claude", "Is it?", [b"a"]) and base not in others
+    assert len(set(others)) == len(others)
 
 
 # --- mail ---

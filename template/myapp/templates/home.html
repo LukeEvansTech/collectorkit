@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Myapp</title>
+  </head>
+  <body>
+    <h1>Myapp</h1>
+    <p>
+      {% if last %}Last sweep {{ last["started"] }} UTC: {{ last["status"] }}, {{ last["listings"] }}
+      listings, mail {{ last["alerts"] or "not sent" }}.{% else %}No sweep has run yet.{% endif %}
+      Next at {{ next_at.strftime("%H:%M on %d %b") }}.
+    </p>
+    <form method="post" action="/sweep"><button type="submit">Sweep now</button></form>
+    <ul>
+      {% for line in coverage %}
+      <li>{{ line }}</li>
+      {% endfor %}
+    </ul>
+    <h2>Listings</h2>
+    <ul>
+      {% for l in listings %}
+      <li><a href="{{ l['url'] }}">{{ l["name"] }}</a> {{ l["price"] }} ({{ l["source"] }})</li>
+      {% endfor %}
+    </ul>
+    <footer>{{ version }}</footer>
+  </body>
+</html>

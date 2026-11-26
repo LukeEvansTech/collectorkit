@@ -31,3 +31,8 @@ jobs:
 
       - name: Run tests
         run: python -m pytest -q
+
+      - name: Run the new-app template's tests
+        run: |
+          pip install jinja2
+          python -m pytest -q --rootdir template -c template/pyproject.toml template/tests

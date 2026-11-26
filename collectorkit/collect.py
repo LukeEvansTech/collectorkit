@@ -197,6 +197,21 @@ def page(
     return page_items(rows, href_match, img_match, img_sub, keep_query)
 
 
+def _web_only(items: list[Item]) -> list[Item]:
+    """Listings whose link is http(s). A shop's feed is someone else's text: a ``javascript:``
+    link would run in the app's own pages when clicked. A photo with any other scheme is
+    dropped and the listing kept."""
+    web = ("https://", "http://")
+    out = []
+    for i in items:
+        if not i.url.lower().startswith(web):
+            continue
+        if i.image and not i.image.lower().startswith(web):
+            i.image = ""
+        out.append(i)
+    return out
+
+
 def _reason(e: Exception) -> str:
     if isinstance(e, CollectError):
         return str(e)[:100]
@@ -211,7 +226,7 @@ def run(jobs: Iterable[tuple[str, Callable[[], list[Item]]]]) -> list[Outcome]:
     for name, read in jobs:
         t0 = time.monotonic()
         try:
-            items = read()
+            items = _web_only(read())
             if not items:
                 raise CollectError("0 items (blocked, or the page layout changed)")
             for i in items:
