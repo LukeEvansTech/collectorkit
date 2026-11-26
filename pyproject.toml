@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "collectorkit"
+description = "Shared parts of scheduled collector apps: scheduler, SQLite helpers, source collectors, LLM client, mail, notifications and metrics"
+readme = "README.md"
+requires-python = ">=3.12"
+dynamic = ["version"]
+dependencies = ["apprise", "croniter", "pillow"]
+
+[project.optional-dependencies]
+web = ["fastapi"]
+
+[tool.setuptools]
+packages = ["collectorkit"]
+
+[tool.setuptools.dynamic]
+version = { attr = "collectorkit.__version__" }
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

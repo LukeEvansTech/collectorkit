@@ -1,0 +1,3 @@
+# Check rows the merge waits for when none are passed (one per line).
+lint / lint
+test
