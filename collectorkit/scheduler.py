@@ -14,13 +14,20 @@ log = logging.getLogger(__name__)
 
 
 def next_time(expr: str, tz: str, now: dt.datetime | None = None) -> dt.datetime:
-    base = now or dt.datetime.now(ZoneInfo(tz))
+    zone = ZoneInfo(tz)
+    base = now.astimezone(zone) if now else dt.datetime.now(zone)
     return croniter(expr, base).get_next(dt.datetime)
 
 
 def start(expr: str, tz: str, job, name: str = "sweep") -> threading.Thread:
     if not croniter.is_valid(expr):
         raise ValueError(f"invalid {name} schedule: {expr!r}")
+    # Here, not in the thread: an unknown timezone, or an expression with no next time
+    # (31 February), must stop the app at start-up instead of leaving it with no sweeps.
+    try:
+        next_time(expr, tz)
+    except Exception as e:
+        raise ValueError(f"invalid {name} schedule: {expr!r} in {tz!r}") from e
 
     def loop() -> None:
         while True:

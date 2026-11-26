@@ -35,9 +35,20 @@ def test_next_time_across_the_autumn_clock_change_is_30_minutes_away():
     assert at.timestamp() - now.timestamp() == 15 * 60
 
 
-def test_start_refuses_an_invalid_expression():
-    with pytest.raises(ValueError):
-        scheduler.start("not cron", "Europe/London", lambda: None)
+def test_next_time_reads_a_reference_time_in_the_schedules_own_zone():
+    now = dt.datetime(2026, 7, 1, 7, 30, tzinfo=dt.timezone.utc)  # 08:30 in London
+    at = scheduler.next_time("0 8 * * *", "Europe/London", now)
+    assert (at.day, at.hour, at.utcoffset()) == (2, 8, dt.timedelta(hours=1))
+
+
+def test_start_refuses_a_schedule_that_can_never_run():
+    for expr, tz in (
+        ("not cron", "Europe/London"),
+        ("0 8 * * *", "Mars/Olympus"),
+        ("0 0 31 2 *", "Europe/London"),
+    ):
+        with pytest.raises(ValueError):
+            scheduler.start(expr, tz, lambda: None)
 
 
 # --- notify ---
